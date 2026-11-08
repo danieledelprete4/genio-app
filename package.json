@@ -1,0 +1,65 @@
+{
+  "name": "genio-desktop",
+  "productName": "Genio",
+  "version": "1.0.1",
+  "description": "Genio per Windows e Mac",
+  "author": "Genio",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "win": "electron-builder --win nsis --x64",
+    "mac": "electron-builder --mac dir --x64 --arm64"
+  },
+  "devDependencies": {
+    "electron": "44.7.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "app.genio.desktop",
+    "publish": null,
+    "productName": "Genio",
+    "artifactName": "Genio-${os}-${arch}.${ext}",
+    "files": [
+      "main.js",
+      "preload.js",
+      "pagine/**",
+      "build/icon.png"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "protocols": [
+      {
+        "name": "Genio",
+        "schemes": [
+          "genio"
+        ]
+      }
+    ],
+    "win": {
+      "icon": "build/icon.png",
+      "signAndEditExecutable": true
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Genio",
+      "language": "1040",
+      "installerLanguages": [
+        "it_IT"
+      ]
+    },
+    "mac": {
+      "icon": "build/icon.png",
+      "category": "public.app-category.business",
+      "identity": null,
+      "target": "dir"
+    }
+  }
+}

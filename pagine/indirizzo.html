@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self'">
+<title>Genio</title>
+<link rel="stylesheet" href="stile.css">
+</head>
+<body data-page="indirizzo">
+<form class="box" id="f">
+  <img class="logo" src="logo.svg" alt="">
+  <h1 id="titolo">Benvenuto in <span class="nome">Genio</span></h1>
+  <p id="testo">Scrivi l'indirizzo del sito <span class="nome">Genio</span> della tua azienda. Lo chiediamo solo ora: dopo si apre da solo.</p>
+  <input id="url" type="text" inputmode="url" autocomplete="url" spellcheck="false" placeholder="https://nome.vercel.app" autofocus>
+  <div class="err" id="err"></div>
+  <div class="row">
+    <button type="button" class="sec" id="annulla" hidden>Annulla</button>
+    <button type="submit" id="ok">Apri</button>
+  </div>
+  <div class="hint">Puoi cambiarlo quando vuoi dal menu, con Cambia indirizzo.</div>
+</form>
+<script src="pagine.js"></script>
+</body>
+</html>

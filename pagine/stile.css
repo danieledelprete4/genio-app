@@ -1,0 +1,22 @@
+:root { --bg: #f5f6fb; --card: #ffffff; --text: #1d1f2b; --muted: #5b5f73; --accent: #5865e0; --accent-2: #4f5bd5; --line: #e3e5ef; --err: #c2413b; }
+@media (prefers-color-scheme: dark) { :root { --bg: #15161c; --card: #1f2029; --text: #eceef6; --muted: #a2a6b8; --line: #33354a; --err: #ff8a80; } }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--text); font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: grid; place-items: center; padding: 16px; -webkit-user-select: none; user-select: none; }
+.box { background: var(--card); border-radius: 20px; box-shadow: 0 10px 34px rgba(30, 40, 90, .09); padding: 34px 30px 28px; width: 100%; max-width: 440px; text-align: center; }
+.logo { width: 64px; height: 64px; margin-bottom: 14px; }
+h1 { font-size: 21px; margin: 0 0 6px; }
+p { margin: 0 0 18px; color: var(--muted); }
+input { width: 100%; font: inherit; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--text); outline: none; -webkit-user-select: text; user-select: text; }
+input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(88, 101, 224, .18); }
+.row { display: flex; gap: 10px; margin-top: 16px; justify-content: center; flex-wrap: wrap; }
+button { font: inherit; font-weight: 600; border: 0; border-radius: 12px; padding: 11px 20px; cursor: pointer; background: var(--accent); color: #fff; }
+button:hover { background: var(--accent-2); }
+button.sec { background: transparent; color: var(--accent); border: 1px solid var(--line); }
+button.sec:hover { background: var(--bg); }
+button:disabled { opacity: .6; cursor: default; }
+.err { color: var(--err); margin-top: 12px; min-height: 1.5em; font-size: 14px; }
+.hint { font-size: 13px; color: var(--muted); margin-top: 14px; }
+.spin { width: 28px; height: 28px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: s 0.9s linear infinite; margin: 4px auto 16px; }
+@keyframes s { to { transform: rotate(360deg); } }
+[hidden] { display: none !important; }

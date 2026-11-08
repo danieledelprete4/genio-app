@@ -1,0 +1,83 @@
+# Crea l'app per computer su Windows e Mac veri.
+# - Ogni modifica proposta (pull request): crea i file e li lascia da scaricare tra gli "Artifacts" del controllo, per provarli.
+# - Un tag vX.Y.Z (es. v1.0.1): crea i file e li pubblica nella Release, con nomi fissi, così i link
+#   https://github.com/danieledelprete4/genio-app/releases/latest/download/<nome> restano sempre uguali.
+name: App per computer
+
+on:
+  pull_request:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+# nel registro del controllo si vede quale file scarica electron-builder (utile se un download non riesce)
+env:
+  DEBUG: electron-builder,@electron/get:index
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci --no-audit --no-fund
+      # fino a 3 tentativi: i download di Electron ogni tanto rispondono 504
+      - name: Crea l'installer
+        shell: bash
+        run: for i in 1 2 3; do npx electron-builder --win nsis --x64 --publish never && exit 0; sleep 20; done; exit 1
+      - name: Nomi fissi
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out | Out-Null
+          Copy-Item dist/Genio-win-x64.exe out/Genio-Windows-Setup.exe
+          Compress-Archive -Path out/Genio-Windows-Setup.exe -DestinationPath out/Genio-Windows.zip
+      - uses: actions/upload-artifact@v4
+        with: { name: windows, path: out/*, if-no-files-found: error }
+
+  mac:
+    runs-on: macos-latest
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci --no-audit --no-fund
+      # fino a 3 tentativi: i download di Electron ogni tanto rispondono 504
+      - name: Crea le app
+        run: for i in 1 2 3; do npx electron-builder --mac dir --x64 --arm64 --publish never && exit 0; sleep 20; done; exit 1
+      # firma ad-hoc (senza account Apple): al primo avvio si autorizza in Privacy e sicurezza.
+      # ditto conserva i collegamenti interni dell'app, che uno zip normale perderebbe.
+      - name: Firma ad-hoc e zip
+        run: |
+          mkdir -p out
+          for pair in "mac-arm64:AppleSilicon" "mac:Intel"; do
+            d="${pair%%:*}"; n="${pair##*:}"
+            codesign --force --deep --sign - "dist/$d/Genio.app"
+            codesign --verify --deep --strict "dist/$d/Genio.app"
+            ditto -c -k --sequesterRsrc --keepParent "dist/$d/Genio.app" "out/Genio-Mac-$n.zip"
+          done
+      - uses: actions/upload-artifact@v4
+        with: { name: mac, path: out/*, if-no-files-found: error }
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, mac]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: out, merge-multiple: true }
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Genio ${{ github.ref_name }}
+          files: out/*
+          body: |
+            App Genio per computer.
+            - Windows 10 e 11: Genio-Windows-Setup.exe (oppure Genio-Windows.zip se il browser blocca l'exe)
+            - Mac con chip Apple (M1, M2, M3, M4...): Genio-Mac-AppleSilicon.zip
+            - Mac con processore Intel: Genio-Mac-Intel.zip

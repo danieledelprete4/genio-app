@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
 
+# nel registro del controllo si vede quale file scarica electron-builder (utile se un download non riesce)
+env:
+  DEBUG: electron-builder,@electron/get:index
+
 jobs:
   windows:
     runs-on: windows-latest

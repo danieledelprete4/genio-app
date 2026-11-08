@@ -1,6 +1,7 @@
 # Crea l'app per computer su Windows e Mac veri.
 # - Ogni modifica proposta (pull request): crea i file e li lascia da scaricare tra gli "Artifacts" del controllo, per provarli.
-# - Un tag vX.Y.Z (es. v1.0.1): crea i file e li pubblica nella Release, con nomi fissi, così i link
+# - Un tag vX.Y.Z (es. v1.0.1), oppure "Run workflow" dalla scheda Actions: crea i file e li pubblica nella Release
+#   della versione scritta in package.json, con nomi fissi, così i link
 #   https://github.com/danieledelprete4/genio-app/releases/latest/download/<nome> restano sempre uguali.
 name: App per computer
 
@@ -8,6 +9,7 @@ on:
   pull_request:
   push:
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -64,17 +66,24 @@ jobs:
         with: { name: mac, path: out/*, if-no-files-found: error }
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     needs: [windows, mac]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+      - name: Versione
+        id: v
+        run: echo "tag=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v4
         with: { path: out, merge-multiple: true }
       - uses: softprops/action-gh-release@v2
         with:
-          name: Genio ${{ github.ref_name }}
+          tag_name: ${{ steps.v.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          name: Genio ${{ steps.v.outputs.tag }}
           files: out/*
           body: |
             App Genio per computer.

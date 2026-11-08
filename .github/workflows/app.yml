@@ -20,7 +20,10 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci --no-audit --no-fund
-      - run: npx electron-builder --win nsis --x64 --publish never
+      # fino a 3 tentativi: i download di Electron ogni tanto rispondono 504
+      - name: Crea l'installer
+        shell: bash
+        run: for i in 1 2 3; do npx electron-builder --win nsis --x64 --publish never && exit 0; sleep 20; done; exit 1
       - name: Nomi fissi
         shell: pwsh
         run: |
@@ -39,7 +42,9 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci --no-audit --no-fund
-      - run: npx electron-builder --mac dir --x64 --arm64 --publish never
+      # fino a 3 tentativi: i download di Electron ogni tanto rispondono 504
+      - name: Crea le app
+        run: for i in 1 2 3; do npx electron-builder --mac dir --x64 --arm64 --publish never && exit 0; sleep 20; done; exit 1
       # firma ad-hoc (senza account Apple): al primo avvio si autorizza in Privacy e sicurezza.
       # ditto conserva i collegamenti interni dell'app, che uno zip normale perderebbe.
       - name: Firma ad-hoc e zip

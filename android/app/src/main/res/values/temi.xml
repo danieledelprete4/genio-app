@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- tema chiaro senza barra: lo schermo è tutto di Genio; fondo bianco durante l'avvio -->
+    <style name="Tema" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:statusBarColor">@android:color/white</item>
+        <item name="android:navigationBarColor">@android:color/white</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:colorAccent">#0F6CBD</item>
+    </style>
+</resources>

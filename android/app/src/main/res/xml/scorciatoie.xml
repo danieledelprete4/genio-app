@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- tenendo premuta l'icona di Genio: collega il tablet a un altro indirizzo -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="indirizzo"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/cambia_indirizzo"
+        android:shortcutLongLabel="@string/cambia_indirizzo_lungo">
+        <intent
+            android:action="app.genio.tablet.INDIRIZZO"
+            android:targetPackage="app.genio.tablet"
+            android:targetClass="app.genio.tablet.MainActivity" />
+    </shortcut>
+</shortcuts>

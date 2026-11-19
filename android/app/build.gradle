@@ -1,0 +1,56 @@
+plugins {
+    id 'com.android.application'
+}
+
+// versione e firma: la versione da versione.properties; la firma dai segreti del repository (GitHub Actions).
+// Senza segreti l'APK si firma con la chiave di prova: va bene per provarlo, non per gli aggiornamenti sui tablet.
+def ver = new Properties()
+file('../versione.properties').withInputStream { ver.load(it) }
+def firma = System.getenv('ANDROID_KEYSTORE_FILE')
+
+android {
+    namespace 'app.genio.tablet'
+    compileSdk 35
+    buildToolsVersion '35.0.0'
+
+    defaultConfig {
+        applicationId 'app.genio.tablet'
+        minSdk 26
+        targetSdk 35
+        versionCode ver.getProperty('codice').toInteger()
+        versionName ver.getProperty('nome')
+    }
+
+    signingConfigs {
+        if (firma) {
+            negozi {
+                storeFile file(firma)
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig firma ? signingConfigs.negozi : signingConfigs.debug
+        }
+    }
+
+    buildFeatures { buildConfig true }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // lettore di QR di Google Play Services: nessun permesso fotocamera, interfaccia già pronta
+    implementation 'com.google.android.gms:play-services-code-scanner:16.1.0'
+    testImplementation 'junit:junit:4.13.2'
+}

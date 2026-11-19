@@ -1,4 +1,4 @@
-# Genio per Windows e Mac
+# Genio per Windows, Mac e tablet Android
 
 L'app apre il sito Genio dell'azienda in una finestra propria, con l'icona sul desktop, come un programma installato.
 Qui ci sono solo l'app per computer e i file da scaricare: il codice di Genio non è in questo repository.
@@ -10,12 +10,14 @@ Dall'ultima versione in [Releases](../../releases/latest):
 - **Windows 10 e 11**: `Genio-Windows-Setup.exe` (oppure `Genio-Windows.zip` se il browser blocca l'exe)
 - **Mac con chip Apple** (M1, M2, M3, M4 e successivi): `Genio-Mac-AppleSilicon.zip`
 - **Mac con processore Intel**: `Genio-Mac-Intel.zip`
+- **Tablet Android dei negozi** (Android 8 o successivo): `Genio-Android.apk`
 
 Link fissi, sempre all'ultima versione (sono quelli da incollare in Genio, Utenti e accessi > App per computer):
 
 - `https://github.com/danieledelprete4/genio-app/releases/latest/download/Genio-Windows-Setup.exe`
 - `https://github.com/danieledelprete4/genio-app/releases/latest/download/Genio-Mac-AppleSilicon.zip`
 - `https://github.com/danieledelprete4/genio-app/releases/latest/download/Genio-Mac-Intel.zip`
+- `https://github.com/danieledelprete4/genio-app/releases/latest/download/Genio-Android.apk` (campo "Tablet Android (APK)")
 
 ## Installare su Windows
 
@@ -37,6 +39,20 @@ Si cambia dal menu con **Cambia indirizzo** (Ctrl+Maiusc+L su Windows, Cmd+Maius
 
 Con **Accedi con Microsoft** o **Accedi con Google** si apre il browser del computer: scegli il tuo account aziendale,
 poi il browser chiede di aprire Genio. Scegli **Apri** e Genio torna in primo piano, già dentro.
+
+## App per i tablet Android
+
+Il codice è nella cartella `android/` (Java, nessuna libreria oltre al lettore di QR di Google Play Services).
+L'app apre Genio a tutto schermo con lo schermo sempre acceso e si presenta al sito come `GenioTablet`, così Genio
+si mette nel modo tablet. Al primo avvio si inquadra il QR della scheda "App per i tablet dei negozi" (Utenti e accessi > Negozi)
+o si scrive l'indirizzo; tenendo premuta l'icona c'è **Cambia indirizzo**. L'accesso Microsoft o Google si fa nel browser
+del tablet e torna all'app con `genio://auth`, come sui computer.
+
+Firma: l'APK si firma sempre con la stessa chiave, altrimenti i tablet non accettano gli aggiornamenti. La chiave sta nei
+segreti del repository: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
+Senza segreti le prove delle pull request usano la chiave di prova e la pubblicazione si ferma.
+Prova in locale: `cd android && gradle assembleRelease` (serve l'Android SDK). Per una nuova versione si alzano
+`codice` e `nome` in `android/versione.properties`.
 
 ## Nuova versione
 

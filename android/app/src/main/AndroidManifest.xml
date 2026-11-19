@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- lettura della tessera sanitaria e foto delle ricevute dentro Genio -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- timbratura in negozio: Genio controlla di essere vicino al negozio -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- copia dei file scaricati nella cartella Download sui tablet con Android 8 e 9 -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
+    <!-- app per fotocamera e per aprire PDF ed Excel scaricati (Android 11 e successivi) -->
+    <queries>
+        <intent><action android:name="android.media.action.IMAGE_CAPTURE" /></intent>
+        <intent><action android:name="android.intent.action.VIEW" /><data android:mimeType="*/*" /></intent>
+        <intent><action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.BROWSABLE" /><data android:scheme="https" /></intent>
+    </queries>
+
+    <application
+        android:label="@string/nome"
+        android:icon="@mipmap/ic_launcher"
+        android:theme="@style/Tema"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/niente_backup"
+        android:fullBackupContent="false"
+        android:usesCleartextTraffic="false"
+        android:largeHeap="false"
+        android:supportsRtl="false">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- ritorno dall'accesso Microsoft o Google fatto nel browser: genio://auth?code=... -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="genio" android:host="auth" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/scorciatoie" />
+        </activity>
+
+        <!-- file scaricati e foto scattate: li vedono solo le app a cui Genio li passa -->
+        <provider
+            android:name=".Archivio"
+            android:authorities="app.genio.tablet.archivio"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
+        <!-- il lettore di QR di Google si scarica insieme all'app, non al primo uso -->
+        <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="barcode_ui" />
+    </application>
+</manifest>

@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self'">
+<title>Genio</title>
+<link rel="stylesheet" href="stile.css">
+</head>
+<body data-page="aggiorna">
+<div class="box">
+  <img class="logo" src="logo.svg" alt="">
+  <h1>Serve un aggiornamento del tablet</h1>
+  <p>Genio usa <b>Android System WebView</b> per mostrare le pagine, e su questo tablet è troppo vecchio (<span id="ver"></span>). Aggiornalo dal Play Store: è gratis e richiede un minuto.</p>
+  <button type="button" id="aggiorna">Apri il Play Store</button>
+  <div class="row one">
+    <button type="button" class="sec" id="comunque">Continua comunque</button>
+  </div>
+  <div class="hint">Senza aggiornamento alcune schermate potrebbero non vedersi bene.</div>
+</div>
+<script src="pagine.js"></script>
+</body>
+</html>

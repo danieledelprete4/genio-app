@@ -1,9 +1,9 @@
-# Crea l'app per computer su Windows e Mac veri.
+# Crea l'app per computer su Windows e Mac veri e l'app per i tablet Android dei negozi (APK).
 # - Ogni modifica proposta (pull request): crea i file e li lascia da scaricare tra gli "Artifacts" del controllo, per provarli.
 # - Un tag vX.Y.Z (es. v1.0.1), oppure "Run workflow" dalla scheda Actions: crea i file e li pubblica nella Release
 #   della versione scritta in package.json, con nomi fissi, così i link
 #   https://github.com/danieledelprete4/genio-app/releases/latest/download/<nome> restano sempre uguali.
-name: App per computer
+name: App per computer e tablet
 
 on:
   pull_request:
@@ -65,9 +65,46 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: { name: mac, path: out/*, if-no-files-found: error }
 
+  # APK per i tablet: firmato con la chiave dei negozi (segreti del repository). Senza la stessa chiave
+  # i tablet non accettano gli aggiornamenti, per questo la pubblicazione si ferma se i segreti mancano.
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.14.3' }
+      - name: Chiave di firma
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          EVENTO: ${{ github.event_name }}
+        run: |
+          if [ -n "$KS" ]; then
+            echo "$KS" | base64 -d > "$RUNNER_TEMP/negozi.jks"
+            echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/negozi.jks" >> "$GITHUB_ENV"
+          elif [ "$EVENTO" != "pull_request" ]; then
+            echo "::error::Manca il segreto ANDROID_KEYSTORE_BASE64: senza la chiave dei negozi l'APK non si pubblica"; exit 1
+          else
+            echo "::notice::APK di prova firmato con la chiave di prova (solo per provarlo, non per aggiornare i tablet)"
+          fi
+      - name: Crea l'APK
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: gradle assembleRelease --no-daemon
+      - name: Nome fisso
+        run: |
+          mkdir -p out
+          cp android/app/build/outputs/apk/release/app-release.apk out/Genio-Android.apk
+      - uses: actions/upload-artifact@v4
+        with: { name: android, path: out/*, if-no-files-found: error }
+
   release:
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
-    needs: [windows, mac]
+    needs: [windows, mac, android]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -90,3 +127,4 @@ jobs:
             - Windows 10 e 11: Genio-Windows-Setup.exe (oppure Genio-Windows.zip se il browser blocca l'exe)
             - Mac con chip Apple (M1, M2, M3, M4...): Genio-Mac-AppleSilicon.zip
             - Mac con processore Intel: Genio-Mac-Intel.zip
+            - Tablet Android dei negozi (Android 8 o successivo): Genio-Android.apk

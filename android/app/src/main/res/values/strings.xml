@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nome">Genio</string>
+    <string name="cambia_indirizzo">Cambia indirizzo</string>
+    <string name="cambia_indirizzo_lungo">Collega un altro Genio</string>
+</resources>

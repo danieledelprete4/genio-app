@@ -122,12 +122,14 @@ public class MainActivity extends Activity {
         apriSito(null);
     }
 
+    static final String HUB = "/hub"; // pannello di Genio: senza accesso mostra la schermata di accesso
+
     String base() { return Indirizzo.origine(prefs.getString("url", null)); }
 
     void apriSito(String dove) {
         String b = base();
         if (b == null) { pagina("indirizzo.html", "primo=1"); return; }
-        web.loadUrl(dove != null ? dove : b + "/");
+        web.loadUrl(dove != null ? dove : b + HUB); // sempre il pannello (o l'accesso), mai la presentazione
     }
 
     void pagina(String nome, String query) {
@@ -192,6 +194,7 @@ public class MainActivity extends Activity {
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, false);
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG);
+        web.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_YES); // il gestore delle password di Android propone nome e password salvati
         web.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, true);
         web.addJavascriptInterface(new Ponte(this), "GenioApp");
         web.setWebViewClient(new Client());

@@ -250,6 +250,8 @@ public class MainActivity extends Activity {
         Uri u = Uri.parse(url);
         String sch = u.getScheme() == null ? "" : u.getScheme().toLowerCase(java.util.Locale.ROOT);
         if (PROTOCOLLO.equals(sch)) { ritornoAccesso(u); return true; }
+        // il Genio collegato rimanda alla versione con (o senza) "www.": è lo stesso sito, si salva l'indirizzo nuovo e si resta qui
+        if (Indirizzo.gemello(url, base())) prefs.edit().putString("url", Indirizzo.origine(url)).apply();
         if (nelSito(url)) {
             String p = u.getPath() == null ? "" : u.getPath();
             for (String l : LOGIN) if (p.equals(l)) { accesso(l.endsWith("google") ? "google" : "microsoft"); return true; }
@@ -624,6 +626,7 @@ public class MainActivity extends Activity {
     void collega(String testo) {
         String b = Indirizzo.origine(testo);
         if (b == null) { esito(false, "Indirizzo non valido: inquadra il QR della scheda App per tablet o scrivi un indirizzo come nome.vercel.app"); return; }
+        final String[] dest = { b }; // indirizzo da salvare: quello scritto o quello finale dopo un rimando
         bg.execute(() -> {
             boolean genio = false;
             String errore = "Indirizzo non raggiungibile: controlla la connessione a internet e l'indirizzo.";
@@ -634,6 +637,9 @@ public class MainActivity extends Activity {
                 c.setUseCaches(false);
                 int st = c.getResponseCode();
                 if (st == 200) try (InputStream in = c.getInputStream()) { genio = new JSONObject(leggi(in)).has("desktop"); } catch (Exception ignored) {}
+                // dopo un rimando (es. genio.nexus -> www.genio.nexus) si salva l'indirizzo finale, se è lo stesso Genio
+                String fin = Indirizzo.origine(c.getURL().toString());
+                if (genio && fin != null && Indirizzo.gemello(fin, b)) dest[0] = fin;
                 c.disconnect();
                 if (!genio) errore = "A questo indirizzo non risponde Genio: controlla di aver inquadrato il QR giusto.";
             } catch (Exception ignored) {}
@@ -641,8 +647,8 @@ public class MainActivity extends Activity {
             final String err = errore;
             ui.post(() -> {
                 if (!ok) { esito(false, err); return; }
-                if (!b.equals(base())) CookieManager.getInstance().removeAllCookies(null); // un altro Genio: si entra da capo
-                prefs.edit().putString("url", b).apply();
+                if (!dest[0].equals(base())) CookieManager.getInstance().removeAllCookies(null); // un altro Genio: si entra da capo
+                prefs.edit().putString("url", dest[0]).apply();
                 accessoInApp = null;
                 apriSito(null);
             });

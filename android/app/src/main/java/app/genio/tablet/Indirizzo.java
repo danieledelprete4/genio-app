@@ -11,7 +11,7 @@ final class Indirizzo {
     // null = non valido. Solo https; http solo per le prove in rete locale.
     static String origine(String testo) {
         if (testo == null) return null;
-        String s = testo.trim();
+        String s = testo.replaceAll("\\s+", ""); // anche gli spazi messi dal correttore della tastiera
         if (s.isEmpty() || s.length() > 400) return null;
         if (!s.matches("(?i)^[a-z][a-z0-9+.-]*://.*")) s = "https://" + s;
         try {
@@ -36,5 +36,13 @@ final class Indirizzo {
         if (url == null || base == null) return false;
         String o = origine(url);
         return o != null && o.equals(base) && (url.startsWith(base + "/") || url.equals(base) || url.startsWith(base + "?") || url.startsWith(base + "#"));
+    }
+
+    // lo stesso Genio con o senza "www." davanti (es. genio.nexus che rimanda a www.genio.nexus): stessa porta e https
+    static boolean gemello(String url, String base) {
+        String o = origine(url);
+        if (o == null || base == null || o.equals(base) || !o.startsWith("https://") || !base.startsWith("https://")) return false;
+        String a = o.substring(8), b = base.substring(8);
+        return a.equals("www." + b) || b.equals("www." + a);
     }
 }

@@ -40,4 +40,18 @@ public class IndirizzoTest {
         assertFalse(Indirizzo.stesso("http://genio.example.it/", b));
         assertFalse(Indirizzo.stesso("https://genio.example.it/", null));
     }
+
+    @Test public void spaziDelCorrettoreTolti() {
+        assertEquals("https://www.genio.example.it", Indirizzo.origine("www. genio.example.it "));
+    }
+
+    @Test public void stessoGenioConOSenzaWww() {
+        assertTrue(Indirizzo.gemello("https://www.genio.example.it/hub", "https://genio.example.it"));
+        assertTrue(Indirizzo.gemello("https://genio.example.it/", "https://www.genio.example.it"));
+        assertFalse(Indirizzo.gemello("https://genio.example.it/", "https://genio.example.it"));
+        assertFalse(Indirizzo.gemello("https://www.altro.it/", "https://genio.example.it"));
+        assertFalse(Indirizzo.gemello("https://wwwgenio.example.it/", "https://genio.example.it"));
+        assertFalse(Indirizzo.gemello("http://www.genio.example.it/", "https://genio.example.it"));
+        assertFalse(Indirizzo.gemello("https://www.genio.example.it:8443/", "https://genio.example.it"));
+    }
 }

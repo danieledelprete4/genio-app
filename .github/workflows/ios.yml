@@ -14,7 +14,7 @@ on:
     paths: ['ios/**', '.github/workflows/ios.yml']
   push:
     branches: [main]
-    paths: ['ios/**']
+    paths: ['ios/**', '.github/workflows/ios.yml']
   schedule:
     - cron: '23 5 1 * *'
   workflow_dispatch:
@@ -121,3 +121,15 @@ jobs:
       - name: Pulizia
         if: always()
         run: rm -rf "$RUNNER_TEMP/asc"
+
+  # GitHub sospende gli appuntamenti fissi dopo 60 giorni senza attività nel repository:
+  # a ogni rinnovo mensile si riattiva questo workflow, così il rinnovo non si ferma mai
+  attivo:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/ios.yml/enable"

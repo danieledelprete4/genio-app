@@ -42,6 +42,10 @@ jobs:
       - name: Progetto Xcode
         working-directory: ios
         run: |
+          # Apple accetta solo app fatte con l'SDK più recente (dal 2026 Xcode 26, da aprile 2027 Xcode 27):
+          # si sceglie l'Xcode stabile più nuovo installato sul Mac di GitHub, non quello di serie
+          XC=$(ls -d /Applications/Xcode_[0-9]*.app | grep -viE 'beta|rc' | sort -V | tail -1)
+          sudo xcode-select -s "$XC/Contents/Developer"
           xcodebuild -version
           brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
           xcodegen generate

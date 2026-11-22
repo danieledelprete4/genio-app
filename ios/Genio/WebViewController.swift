@@ -32,8 +32,11 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
 
     private var versione: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0" }
 
-    override var preferredStatusBarStyle: UIStatusBarStyle { .default }
+    override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
     override var canBecomeFirstResponder: Bool { true }
+
+    private let barra = UIView()
+    private let notte = UIColor(red: 0x09 / 255, green: 0x1f / 255, blue: 0x5b / 255, alpha: 1) // --night di serie
 
     // ---------- avvio ----------
     override func viewDidLoad() {
@@ -58,8 +61,17 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         web.backgroundColor = .white
         web.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(web)
+        // striscia sotto l'ora e la batteria (notch / Dynamic Island) del colore della colonna di Genio:
+        // la pagina parte sotto, così niente finisce coperto
+        barra.backgroundColor = notte
+        barra.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(barra)
         NSLayoutConstraint.activate([
-            web.topAnchor.constraint(equalTo: view.topAnchor),
+            barra.topAnchor.constraint(equalTo: view.topAnchor),
+            barra.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            barra.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            barra.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            web.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             web.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             web.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             web.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -158,7 +170,24 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
 
     func webView(_ w: WKWebView, didFailProvisionalNavigation n: WKNavigation!, withError e: Error) { mostraErrore(e) }
     func webView(_ w: WKWebView, didFail n: WKNavigation!, withError e: Error) { mostraErrore(e) }
-    func webView(_ w: WKWebView, didFinish n: WKNavigation!) { errore.isHidden = true }
+    func webView(_ w: WKWebView, didFinish n: WKNavigation!) {
+        errore.isHidden = true
+        // colore della colonna scelto in Aspetto (--night), per la striscia in alto
+        w.evaluateJavaScript("getComputedStyle(document.documentElement).getPropertyValue('--night')") { [weak self] v, _ in
+            guard let self = self, let c = (v as? String).flatMap(Self.coloreHex) else { return }
+            self.barra.backgroundColor = c
+        }
+    }
+
+    /// "#rrggbb" (anche con spazi) -> colore; nil per altri formati
+    static func coloreHex(_ s: String) -> UIColor? {
+        var t = s.trimmingCharacters(in: .whitespaces)
+        guard t.hasPrefix("#") else { return nil }
+        t.removeFirst()
+        if t.count == 3 { t = t.map { "\($0)\($0)" }.joined() }
+        guard t.count == 6, let n = UInt32(t, radix: 16) else { return nil }
+        return UIColor(red: CGFloat((n >> 16) & 0xff) / 255, green: CGFloat((n >> 8) & 0xff) / 255, blue: CGFloat(n & 0xff) / 255, alpha: 1)
+    }
     func webViewWebContentProcessDidTerminate(_ w: WKWebView) { w.reload() }
 
     // ---------- dove si apre ogni link ----------

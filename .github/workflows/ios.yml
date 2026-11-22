@@ -1,0 +1,107 @@
+# App Genio per iPhone e iPad: si crea su un Mac di GitHub e va su TestFlight di Apple.
+# Il repository è pubblico, quindi i minuti dei Mac di GitHub non si pagano e non si consumano.
+# - Pull request che toccano l'app iOS: si compila e si provano i test sul simulatore, senza firma né invio.
+# - Modifiche all'app iOS su main, "Run workflow" dalla scheda Actions e il giorno 1 di ogni mese: si firma con
+#   l'account sviluppatore (chiave API di App Store Connect nei segreti) e si manda a TestFlight, al gruppo col link
+#   pubblico. Le build di TestFlight scadono dopo 90 giorni: quella del mese le rinnova prima, da sola.
+#   (GitHub sospende gli avvii programmati dopo 60 giorni senza modifiche al repository: se succede, basta "Run workflow".)
+# Segreti: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (testo del file .p8), APPLE_TEAM_ID.
+# Variabili (facoltative): IOS_BUNDLE_ID (di serie app.genio.ios), IOS_TESTFLIGHT_GROUP (di serie Genio).
+name: App per iPhone e iPad
+
+on:
+  pull_request:
+    paths: ['ios/**', '.github/workflows/ios.yml']
+  push:
+    branches: [main]
+    paths: ['ios/**']
+  schedule:
+    - cron: '23 5 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      IOS_BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID || 'app.genio.ios' }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      GRUPPO: ${{ vars.IOS_TESTFLIGHT_GROUP || 'Genio' }}
+      INVIO: ${{ github.event_name != 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Progetto Xcode
+        working-directory: ios
+        run: |
+          xcodebuild -version
+          brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+          xcodegen generate
+
+      - name: Test sul simulatore
+        working-directory: ios
+        run: |
+          SIM=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for k,v in sorted(d.items(), reverse=True) if 'iOS' in k for x in v if x['name'].startswith('iPhone')))")
+          xcodebuild test -project Genio.xcodeproj -scheme Genio -destination "id=$SIM" CODE_SIGNING_ALLOWED=NO -quiet
+
+      - name: Segreti di Apple
+        if: env.INVIO == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          for n in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8 APPLE_TEAM_ID; do
+            [ -n "${!n}" ] || { echo "::error::Manca il segreto $n: senza, l'app non si firma e non va su TestFlight"; exit 1; }
+          done
+          mkdir -p "$RUNNER_TEMP/asc"
+          printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/asc/AuthKey.p8"
+          python3 -c "import json,os; json.dump({'key_id':os.environ['ASC_KEY_ID'],'issuer_id':os.environ['ASC_ISSUER_ID'],'key':open(os.environ['RUNNER_TEMP']+'/asc/AuthKey.p8').read(),'in_house':False}, open(os.environ['RUNNER_TEMP']+'/asc/key.json','w'))"
+          echo "ASC_KEY_ID=$ASC_KEY_ID" >> "$GITHUB_ENV"
+          echo "ASC_ISSUER_ID=$ASC_ISSUER_ID" >> "$GITHUB_ENV"
+
+      # numero della build: cresce a ogni invio (Apple non accetta due build con lo stesso numero)
+      - name: Firma e pacchetto
+        if: env.INVIO == 'true'
+        working-directory: ios
+        run: |
+          BUILD=$(( ${{ github.run_number }} + 10 ))
+          cat > "$RUNNER_TEMP/export.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>export</string>
+            <key>teamID</key><string>${APPLE_TEAM_ID}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+          </dict></plist>
+          PLIST
+          AUTH="-allowProvisioningUpdates -authenticationKeyPath $RUNNER_TEMP/asc/AuthKey.p8 -authenticationKeyID $ASC_KEY_ID -authenticationKeyIssuerID $ASC_ISSUER_ID"
+          xcodebuild archive -project Genio.xcodeproj -scheme Genio -configuration Release -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/Genio.xcarchive" CURRENT_PROJECT_VERSION=$BUILD $AUTH -quiet
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Genio.xcarchive" -exportOptionsPlist "$RUNNER_TEMP/export.plist" \
+            -exportPath "$RUNNER_TEMP/out" $AUTH
+          ls -la "$RUNNER_TEMP/out"
+
+      # invio a TestFlight e consegna al gruppo col link pubblico (la prima build passa la revisione di Apple)
+      - name: Invio a TestFlight
+        if: env.INVIO == 'true'
+        run: |
+          command -v fastlane >/dev/null || brew install fastlane
+          NOTE="Genio aggiornato: $(git log -1 --format=%s | cut -c1-200)"
+          [ "${{ github.event_name }}" = "schedule" ] && NOTE="Rinnovo mensile di Genio: stessa app, nuova scadenza."
+          fastlane pilot upload --ipa "$(ls $RUNNER_TEMP/out/*.ipa | head -1)" --api_key_path "$RUNNER_TEMP/asc/key.json" \
+            --distribute_external true --groups "$GRUPPO" --notify_external_testers true \
+            --uses_non_exempt_encryption false --changelog "$NOTE"
+
+      - name: Pulizia
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/asc"

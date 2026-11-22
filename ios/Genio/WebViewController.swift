@@ -150,7 +150,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         errore.addSubview(pila)
         view.addSubview(errore)
         NSLayoutConstraint.activate([
-            errore.topAnchor.constraint(equalTo: view.topAnchor), errore.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            errore.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor), errore.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             errore.leadingAnchor.constraint(equalTo: view.leadingAnchor), errore.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             pila.centerYAnchor.constraint(equalTo: errore.safeAreaLayoutGuide.centerYAnchor),
             pila.leadingAnchor.constraint(equalTo: errore.safeAreaLayoutGuide.leadingAnchor, constant: 24),

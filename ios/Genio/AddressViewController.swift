@@ -12,33 +12,69 @@ final class AddressViewController: UIViewController, UITextFieldDelegate {
     private let attesa = UIActivityIndicatorView(style: .medium)
     private let blu = UIColor(red: 0x0f / 255, green: 0x6c / 255, blue: 0xbd / 255, alpha: 1)
 
+    // variante A "Notte" (scelta da Daniele il 22/11/2026): stesso blu notte del blocco Face ID (BloccoView.swift),
+    // campo e tasto bianchi, riquadro che dice dove trovare l'indirizzo
+    private let notte = UIColor(red: 0x09 / 255, green: 0x1f / 255, blue: 0x5b / 255, alpha: 1)
+    private let sfondo = CAGradientLayer()
+    private let bordoCampo = UIColor.white
+
+    override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        sfondo.frame = view.bounds
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         overrideUserInterfaceStyle = .light
-        view.backgroundColor = UIColor(red: 0.953, green: 0.949, blue: 0.945, alpha: 1)
+        view.backgroundColor = notte
+        sfondo.colors = [UIColor(red: 0x0b / 255, green: 0x2e / 255, blue: 0x8a / 255, alpha: 1).cgColor, notte.cgColor,
+                         UIColor(red: 0x06 / 255, green: 0x12 / 255, blue: 0x3d / 255, alpha: 1).cgColor]
+        sfondo.locations = [0, 0.42, 1]
+        view.layer.insertSublayer(sfondo, at: 0)
 
-        let icona = UIImageView(image: UIImage(named: "Logo") ?? UIImage(systemName: "lightbulb"))
-        icona.contentMode = .scaleAspectFit
-        icona.layer.cornerRadius = 16
-        icona.clipsToBounds = true
-        icona.widthAnchor.constraint(equalToConstant: 72).isActive = true
-        icona.heightAnchor.constraint(equalToConstant: 72).isActive = true
+        // lampadina bianca in un riquadro di vetro chiaro, come l'anello del blocco Face ID
+        let riquadro = UIView()
+        riquadro.backgroundColor = UIColor.white.withAlphaComponent(0.12)
+        riquadro.layer.cornerRadius = 18
+        riquadro.layer.cornerCurve = .continuous
+        riquadro.layer.borderWidth = 1
+        riquadro.layer.borderColor = UIColor.white.withAlphaComponent(0.3).cgColor
+        let lampadina = UIImageView(image: UIImage(systemName: "lightbulb"))
+        lampadina.tintColor = .white
+        lampadina.contentMode = .scaleAspectFit
+        lampadina.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 28, weight: .regular)
+        lampadina.translatesAutoresizingMaskIntoConstraints = false
+        riquadro.addSubview(lampadina)
+        riquadro.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            riquadro.widthAnchor.constraint(equalToConstant: 64),
+            riquadro.heightAnchor.constraint(equalToConstant: 64),
+            lampadina.centerXAnchor.constraint(equalTo: riquadro.centerXAnchor),
+            lampadina.centerYAnchor.constraint(equalTo: riquadro.centerYAnchor),
+        ])
+        riquadro.isAccessibilityElement = false
 
         let titolo = UILabel()
         titolo.text = "Collega l'app al tuo Genio"
-        titolo.font = .systemFont(ofSize: 24, weight: .semibold)
-        titolo.textColor = UIColor(white: 0.14, alpha: 1)
+        titolo.font = UIFontMetrics(forTextStyle: .title1).scaledFont(for: .systemFont(ofSize: 26, weight: .semibold))
+        titolo.adjustsFontForContentSizeCategory = true
+        titolo.textColor = .white
         titolo.textAlignment = .center
         titolo.numberOfLines = 0
+        titolo.accessibilityTraits = .header
 
         let sotto = UILabel()
-        sotto.text = "Scrivi l'indirizzo che usi per aprire Genio. Lo trovi nella sezione Mobile di Genio, sotto \"iPhone e iPad\"."
-        sotto.font = .systemFont(ofSize: 16)
-        sotto.textColor = UIColor(white: 0.38, alpha: 1)
+        sotto.text = "Scrivi l'indirizzo che usi per aprire Genio."
+        sotto.font = .preferredFont(forTextStyle: .body)
+        sotto.adjustsFontForContentSizeCategory = true
+        sotto.textColor = UIColor.white.withAlphaComponent(0.86)
         sotto.textAlignment = .center
         sotto.numberOfLines = 0
 
-        campo.placeholder = "nome.dominio.it"
+        // campo bianco: globo e "https://" fissi davanti, si scrive solo nome.dominio.it (o con /hub)
+        campo.attributedPlaceholder = NSAttributedString(string: "nome.dominio.it", attributes: [.foregroundColor: UIColor(red: 0.43, green: 0.45, blue: 0.53, alpha: 1)])
         campo.text = iniziale.map { $0.replacingOccurrences(of: "https://", with: "") }
         campo.keyboardType = .URL
         campo.autocapitalizationType = .none
@@ -47,43 +83,113 @@ final class AddressViewController: UIViewController, UITextFieldDelegate {
         campo.textContentType = .URL
         campo.returnKeyType = .go
         campo.clearButtonMode = .whileEditing
-        campo.font = .systemFont(ofSize: 17)
-        campo.textColor = UIColor(white: 0.14, alpha: 1)
+        campo.font = .preferredFont(forTextStyle: .body)
+        campo.adjustsFontForContentSizeCategory = true
+        campo.textColor = UIColor(white: 0.11, alpha: 1)
+        campo.tintColor = blu
         campo.backgroundColor = .white
-        campo.layer.cornerRadius = 12
-        campo.layer.borderWidth = 1
-        campo.layer.borderColor = UIColor(white: 0.82, alpha: 1).cgColor
-        campo.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 14, height: 1))
+        campo.layer.cornerRadius = 14
+        campo.layer.cornerCurve = .continuous
+        campo.layer.borderWidth = 2
+        campo.layer.borderColor = bordoCampo.cgColor
+        let globo = UIImageView(image: UIImage(systemName: "globe"))
+        globo.tintColor = UIColor(white: 0.2, alpha: 1)
+        globo.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 17, weight: .regular)
+        let pre = UILabel()
+        pre.text = "https://"
+        pre.font = .preferredFont(forTextStyle: .body)
+        pre.textColor = UIColor(red: 0.42, green: 0.44, blue: 0.51, alpha: 1)
+        let davanti = UIStackView(arrangedSubviews: [globo, pre])
+        davanti.spacing = 8
+        davanti.alignment = .center
+        davanti.isLayoutMarginsRelativeArrangement = true
+        davanti.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 0, leading: 14, bottom: 0, trailing: 6)
+        davanti.isUserInteractionEnabled = false
+        davanti.frame.size = davanti.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
+        campo.leftView = davanti
         campo.leftViewMode = .always
         campo.delegate = self
-        campo.accessibilityLabel = "Indirizzo di Genio"
-        campo.heightAnchor.constraint(equalToConstant: 52).isActive = true
+        campo.addTarget(self, action: #selector(scritto), for: .editingChanged)
+        campo.accessibilityLabel = "Indirizzo di Genio, dopo https://"
+        campo.heightAnchor.constraint(greaterThanOrEqualToConstant: 54).isActive = true
 
+        // tasto bianco con scritta blu notte; premuto un velo azzurrino, mai un rettangolo scuro
         var c = UIButton.Configuration.filled()
         c.title = "Collega"
-        c.baseBackgroundColor = blu
-        c.baseForegroundColor = .white
-        c.cornerStyle = .large
+        c.baseBackgroundColor = .white
+        c.baseForegroundColor = notte
+        c.cornerStyle = .fixed
+        c.background.cornerRadius = 14
         c.buttonSize = .large
+        c.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { a in
+            var b = a; b.font = UIFontMetrics(forTextStyle: .headline).scaledFont(for: .systemFont(ofSize: 17, weight: .semibold)); return b
+        }
         tasto.configuration = c
+        let scritta = notte
+        tasto.configurationUpdateHandler = { b in
+            var k = b.configuration
+            k?.background.backgroundColor = b.isHighlighted ? UIColor(red: 0.91, green: 0.93, blue: 0.98, alpha: 1) : .white
+            k?.baseForegroundColor = scritta
+            b.configuration = k
+        }
         tasto.addTarget(self, action: #selector(collega), for: .touchUpInside)
-        tasto.heightAnchor.constraint(equalToConstant: 52).isActive = true
+        tasto.heightAnchor.constraint(greaterThanOrEqualToConstant: 54).isActive = true
 
-        errore.font = .systemFont(ofSize: 15)
-        errore.textColor = UIColor(red: 0.64, green: 0.15, blue: 0.16, alpha: 1)
+        // errore: testo rosa chiaro con icona, leggibile sul blu notte
+        errore.font = .preferredFont(forTextStyle: .subheadline)
+        errore.adjustsFontForContentSizeCategory = true
+        errore.textColor = UIColor(red: 1, green: 0.82, blue: 0.82, alpha: 1)
         errore.numberOfLines = 0
         errore.textAlignment = .center
         errore.isHidden = true
 
+        attesa.color = .white
         attesa.hidesWhenStopped = true
 
-        let pila = UIStackView(arrangedSubviews: [icona, titolo, sotto, campo, tasto, attesa, errore])
+        // dove trovare l'indirizzo: riquadro chiaro sul blu
+        let aiuto = UIView()
+        aiuto.backgroundColor = UIColor.white.withAlphaComponent(0.1)
+        aiuto.layer.cornerRadius = 12
+        aiuto.layer.cornerCurve = .continuous
+        let tel = UIImageView(image: UIImage(systemName: "iphone"))
+        tel.tintColor = .white
+        tel.setContentHuggingPriority(.required, for: .horizontal)
+        let aiutoTesto = UILabel()
+        let corpo = UIFont.preferredFont(forTextStyle: .subheadline)
+        let grassetto = UIFont.systemFont(ofSize: corpo.pointSize, weight: .semibold)
+        let t = NSMutableAttributedString(string: "Lo trovi in Genio, nel ", attributes: [.font: corpo])
+        t.append(NSAttributedString(string: "Menu", attributes: [.font: grassetto]))
+        t.append(NSAttributedString(string: " alla voce ", attributes: [.font: corpo]))
+        t.append(NSAttributedString(string: "Mobile", attributes: [.font: grassetto]))
+        t.append(NSAttributedString(string: ", sotto \"iPhone e iPad\".", attributes: [.font: corpo]))
+        aiutoTesto.attributedText = t
+        aiutoTesto.textColor = .white
+        aiutoTesto.numberOfLines = 0
+        let rigaAiuto = UIStackView(arrangedSubviews: [tel, aiutoTesto])
+        rigaAiuto.spacing = 10
+        rigaAiuto.alignment = .top
+        rigaAiuto.translatesAutoresizingMaskIntoConstraints = false
+        aiuto.addSubview(rigaAiuto)
+        NSLayoutConstraint.activate([
+            rigaAiuto.topAnchor.constraint(equalTo: aiuto.topAnchor, constant: 12),
+            rigaAiuto.bottomAnchor.constraint(equalTo: aiuto.bottomAnchor, constant: -12),
+            rigaAiuto.leadingAnchor.constraint(equalTo: aiuto.leadingAnchor, constant: 14),
+            rigaAiuto.trailingAnchor.constraint(equalTo: aiuto.trailingAnchor, constant: -14),
+        ])
+        let icona = riquadro
+        let pila = UIStackView(arrangedSubviews: [icona, titolo, sotto, campo, errore, tasto, attesa, aiuto])
         pila.axis = .vertical
         pila.alignment = .fill
-        pila.spacing = 16
+        pila.spacing = 12
+        pila.setCustomSpacing(18, after: icona)
+        pila.setCustomSpacing(6, after: titolo)
         pila.setCustomSpacing(24, after: sotto)
+        pila.setCustomSpacing(16, after: tasto)
         pila.translatesAutoresizingMaskIntoConstraints = false
+        // l'icona al centro: la pila interna deve essere VERTICALE, altrimenti l'icona (larga 64) riempie la riga
+        // e stringe tutta la schermata a 72 punti (testo in colonna, campo minuscolo: build 22)
         let centro = UIStackView(arrangedSubviews: [icona])
+        centro.axis = .vertical
         centro.alignment = .center
         pila.removeArrangedSubview(icona)
         pila.insertArrangedSubview(centro, at: 0)
@@ -122,7 +228,7 @@ final class AddressViewController: UIViewController, UITextFieldDelegate {
             let chiudi = UIButton(type: .system)
             chiudi.setTitle("Annulla", for: .normal)
             chiudi.titleLabel?.font = .systemFont(ofSize: 17)
-            chiudi.tintColor = blu
+            chiudi.tintColor = .white
             chiudi.addTarget(self, action: #selector(annulla), for: .touchUpInside)
             chiudi.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview(chiudi)
@@ -143,8 +249,15 @@ final class AddressViewController: UIViewController, UITextFieldDelegate {
 
     @objc private func annulla() { dismiss(animated: true) }
 
+    // si riscrive l'indirizzo: via l'errore e il bordo rosso
+    @objc private func scritto() {
+        errore.isHidden = true
+        campo.layer.borderColor = bordoCampo.cgColor
+    }
+
     @objc private func collega() {
         errore.isHidden = true
+        campo.layer.borderColor = bordoCampo.cgColor
         tasto.isEnabled = false
         attesa.startAnimating()
         Collegamento.prova(campo.text ?? "") { [weak self] esito in
@@ -163,6 +276,7 @@ final class AddressViewController: UIViewController, UITextFieldDelegate {
     private func mostra(_ t: String) {
         errore.text = t
         errore.isHidden = false
+        campo.layer.borderColor = UIColor(red: 1, green: 0.61, blue: 0.61, alpha: 1).cgColor
         UIAccessibility.post(notification: .announcement, argument: t)
     }
 }

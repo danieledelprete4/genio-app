@@ -87,15 +87,35 @@ final class AddressViewController: UIViewController, UITextFieldDelegate {
         centro.alignment = .center
         pila.removeArrangedSubview(icona)
         pila.insertArrangedSubview(centro, at: 0)
-        view.addSubview(pila)
+
+        // tutto dentro uno scorrimento che finisce sopra la tastiera: campo e tasto restano sempre visibili
+        let scorri = UIScrollView()
+        scorri.translatesAutoresizingMaskIntoConstraints = false
+        scorri.keyboardDismissMode = .interactive
+        scorri.alwaysBounceVertical = true
+        view.addSubview(scorri)
+        scorri.addSubview(pila)
 
         let g = view.safeAreaLayoutGuide
+        let cont = scorri.contentLayoutGuide
+        let cornice = scorri.frameLayoutGuide
         NSLayoutConstraint.activate([
-            pila.centerYAnchor.constraint(equalTo: g.centerYAnchor, constant: -40),
-            pila.leadingAnchor.constraint(greaterThanOrEqualTo: g.leadingAnchor, constant: 24),
-            pila.trailingAnchor.constraint(lessThanOrEqualTo: g.trailingAnchor, constant: -24),
-            pila.centerXAnchor.constraint(equalTo: g.centerXAnchor),
-            pila.widthAnchor.constraint(equalToConstant: 420).withPriority(.defaultHigh),
+            scorri.topAnchor.constraint(equalTo: g.topAnchor),
+            scorri.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scorri.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scorri.bottomAnchor.constraint(equalTo: view.keyboardLayoutGuide.topAnchor),
+            // contenuto largo quanto lo schermo, alto almeno quanto lo spazio visibile (così la pila sta al centro)
+            cont.widthAnchor.constraint(equalTo: cornice.widthAnchor),
+            cont.heightAnchor.constraint(greaterThanOrEqualTo: cornice.heightAnchor),
+            cont.heightAnchor.constraint(equalTo: cornice.heightAnchor).withPriority(.defaultLow),
+            pila.centerYAnchor.constraint(equalTo: cont.centerYAnchor),
+            pila.topAnchor.constraint(greaterThanOrEqualTo: cont.topAnchor, constant: 24),
+            pila.bottomAnchor.constraint(lessThanOrEqualTo: cont.bottomAnchor, constant: -24),
+            // larghezza: tutto lo schermo meno 24 per lato, al massimo 420 (iPad)
+            pila.centerXAnchor.constraint(equalTo: cont.centerXAnchor),
+            pila.leadingAnchor.constraint(greaterThanOrEqualTo: cont.leadingAnchor, constant: 24),
+            pila.widthAnchor.constraint(lessThanOrEqualToConstant: 420),
+            pila.widthAnchor.constraint(equalTo: cornice.widthAnchor, constant: -48).withPriority(.init(999)),
         ])
 
         if annullabile {

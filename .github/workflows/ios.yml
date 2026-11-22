@@ -6,7 +6,7 @@
 #   pubblico. Le build di TestFlight scadono dopo 90 giorni: quella del mese le rinnova prima, da sola.
 #   (GitHub sospende gli avvii programmati dopo 60 giorni senza modifiche al repository: se succede, basta "Run workflow".)
 # Segreti: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (testo del file .p8), APPLE_TEAM_ID.
-# Variabili (facoltative): IOS_BUNDLE_ID (di serie app.genio.ios), IOS_TESTFLIGHT_GROUP (di serie Genio).
+# Variabili (facoltative): IOS_BUNDLE_ID (di serie app.genio.ios), IOS_TESTFLIGHT_GROUP (di serie Genio), IOS_TESTFLIGHT_INTERNO (di serie Interno).
 name: App per iPhone e iPad
 
 on:
@@ -34,6 +34,7 @@ jobs:
       IOS_BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID || 'app.genio.ios' }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       GRUPPO: ${{ vars.IOS_TESTFLIGHT_GROUP || 'Genio' }}
+      INTERNO: ${{ vars.IOS_TESTFLIGHT_INTERNO || 'Interno' }}
       INVIO: ${{ github.event_name != 'pull_request' }}
     steps:
       - uses: actions/checkout@v4
@@ -102,7 +103,11 @@ jobs:
           # 1) caricamento e attesa dell'elaborazione: la build arriva ai tester interni
           fastlane pilot upload --ipa "$(ls $RUNNER_TEMP/out/*.ipa | head -1)" --api_key_path "$RUNNER_TEMP/asc/key.json" \
             --uses_non_exempt_encryption false --changelog "$NOTE"
-          # 2) invio al gruppo esterno. Apple lo fa creare solo dopo la prima build: se manca, la build resta caricata
+          # 2) gruppo interno (il titolare e il suo team): Apple lo riempie da solo solo con le build caricate da Xcode
+          fastlane pilot distribute --api_key_path "$RUNNER_TEMP/asc/key.json" --app_identifier "$IOS_BUNDLE_ID" \
+            --build_number "$BUILD" --groups "$INTERNO" \
+            || echo "::warning::Build $BUILD non aggiunta al gruppo interno '$INTERNO': aggiungila da App Store Connect > TestFlight"
+          # 3) invio al gruppo esterno. Apple lo fa creare solo dopo la prima build: se manca, la build resta caricata
           #    e si avvisa, invece di dare errore
           fastlane pilot distribute --api_key_path "$RUNNER_TEMP/asc/key.json" --app_identifier "$IOS_BUNDLE_ID" \
             --build_number "$BUILD" --distribute_external true --groups "$GRUPPO" --notify_external_testers true \

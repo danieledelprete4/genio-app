@@ -73,6 +73,7 @@ jobs:
         working-directory: ios
         run: |
           BUILD=$(( ${{ github.run_number }} + 10 ))
+          echo "BUILD=$BUILD" >> "$GITHUB_ENV"
           cat > "$RUNNER_TEMP/export.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -98,9 +99,15 @@ jobs:
           command -v fastlane >/dev/null || brew install fastlane
           NOTE="Genio aggiornato: $(git log -1 --format=%s | cut -c1-200)"
           [ "${{ github.event_name }}" = "schedule" ] && NOTE="Rinnovo mensile di Genio: stessa app, nuova scadenza."
+          # 1) caricamento e attesa dell'elaborazione: la build arriva ai tester interni
           fastlane pilot upload --ipa "$(ls $RUNNER_TEMP/out/*.ipa | head -1)" --api_key_path "$RUNNER_TEMP/asc/key.json" \
-            --distribute_external true --groups "$GRUPPO" --notify_external_testers true \
             --uses_non_exempt_encryption false --changelog "$NOTE"
+          # 2) invio al gruppo esterno. Apple lo fa creare solo dopo la prima build: se manca, la build resta caricata
+          #    e si avvisa, invece di dare errore
+          fastlane pilot distribute --api_key_path "$RUNNER_TEMP/asc/key.json" --app_identifier "$IOS_BUNDLE_ID" \
+            --build_number "$BUILD" --distribute_external true --groups "$GRUPPO" --notify_external_testers true \
+            --changelog "$NOTE" \
+            || echo "::warning::Build $BUILD caricata, ma non inviata al gruppo esterno '$GRUPPO': crealo in App Store Connect > TestFlight (Test esterni) e aggiungi la build"
 
       - name: Pulizia
         if: always()

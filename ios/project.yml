@@ -9,7 +9,7 @@ options:
   createIntermediateGroups: true
 settings:
   base:
-    MARKETING_VERSION: "1.0.0"
+    MARKETING_VERSION: "1.1.0"
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "5.0"
 targets:
@@ -42,6 +42,7 @@ targets:
         NSPhotoLibraryUsageDescription: Genio apre le foto che scegli tu, per allegarle a un preventivo o a una spesa.
         NSLocationWhenInUseUsageDescription: Genio usa la posizione solo quando timbri l'entrata o l'uscita in negozio.
         NSMicrophoneUsageDescription: Genio usa il microfono solo se fai una domanda a voce.
+        NSFaceIDUsageDescription: Genio usa Face ID per restare collegato senza rifare l'accesso, se scegli tu di restare collegato.
   GenioTests:
     type: bundle.unit-test
     platform: iOS

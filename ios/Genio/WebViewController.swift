@@ -12,7 +12,12 @@ import CryptoKit
 // - Gli altri siti si aprono in Safari; PDF ed Excel scaricati si salvano o si condividono; fotocamera e posizione
 //   le chiede iOS la prima volta (testi in Info.plist).
 // - Indirizzo da cambiare: scuotere il telefono, oppure dalla pagina di errore quando Genio non risponde.
-final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, ASWebAuthenticationPresentationContextProviding {
+// - Resta collegato (Sblocco.swift): dopo l'accesso l'app chiede una volta se restare collegati con Face ID;
+//   da lì si apre con Face ID, Touch ID o il codice, anche quando Genio chiude la sessione per inattività o dopo 12 ore.
+//   Riaprendo l'app dopo SBLOCCO_DOPO secondi fuori, Face ID di nuovo. Le pagine vedono solo window.GenioApp
+//   (sblocco, sblocca, esci), mai la chiave.
+final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, ASWebAuthenticationPresentationContextProviding, WKScriptMessageHandler {
+    static let SBLOCCO_DOPO: TimeInterval = 5 * 60
     static let protocollo = "genio"
     static let hub = "/hub" // pannello di Genio: senza accesso mostra la schermata di accesso
     private static let login = ["/api/auth/google", "/api/auth/microsoft"]
@@ -36,6 +41,16 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
     override var canBecomeFirstResponder: Bool { true }
 
     private let barra = UIView()
+    private let blocco = BloccoView()
+    private var sbloccoInCorso = false
+    private var fuoriDa: Date?
+    private var chiesto = false // domanda "restare collegato?" già fatta in questa apertura dell'app
+    private var noChiave: Bool { get { prefs.bool(forKey: "noChiave") } set { prefs.set(newValue, forKey: "noChiave") } }
+    private var haChiave: Bool { base.map(Sblocco.presente) ?? false }
+    private var uaApp: String {
+        let pad = UIDevice.current.userInterfaceIdiom == .pad
+        return "Mozilla/5.0 (\(pad ? "iPad" : "iPhone")) Mobile/15E148" + (pad ? " GenioTablet/\(versione)" : "") + " GenioiOS/\(versione)"
+    }
     private let notte = UIColor(red: 0x09 / 255, green: 0x1f / 255, blue: 0x5b / 255, alpha: 1) // --night di serie
 
     // ---------- avvio ----------
@@ -51,7 +66,10 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         let pad = UIDevice.current.userInterfaceIdiom == .pad
         cfg.applicationNameForUserAgent = "Mobile/15E148" + (pad ? " GenioTablet/\(versione)" : "") + " GenioiOS/\(versione)"
 
+        // ponte per le pagine di Genio (window.GenioApp): solo nella pagina principale, i messaggi solo dal Genio collegato
+        cfg.userContentController.add(Debole(self), name: "genio")
         web = WKWebView(frame: .zero, configuration: cfg)
+        aggiornaPonte()
         web.navigationDelegate = self
         web.uiDelegate = self
         web.allowsBackForwardNavigationGestures = true
@@ -77,6 +95,9 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
             web.trailingAnchor.constraint(equalTo: view.trailingAnchor),
         ])
         preparaErrore()
+        preparaBlocco()
+        NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in self?.fuori() }
+        NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in self?.dentro() }
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -86,7 +107,9 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
     }
 
     private func avvia() {
-        if base == nil { chiediIndirizzo(annullabile: false) } else { apriSito() }
+        if base == nil { chiediIndirizzo(annullabile: false) }
+        else if haChiave { sblocca { [weak self] in self?.apriSito() } } // si entra con Face ID, la sessione la rinnova l'app
+        else { apriSito() }
     }
 
     private func apriSito(_ percorso: String = WebViewController.hub) {
@@ -104,10 +127,12 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         a.collegato = { [weak self, weak a] nuovo in
             guard let self = self else { return }
             let cambia = nuovo != self.base
+            if cambia, let vecchio = self.base { Sblocco.dimentica(vecchio, avvisa: true, ua: self.uaApp) }
             self.base = nuovo
+            self.aggiornaPonte()
             self.accessoInApp = false
             let apri = { a?.dismiss(animated: true); self.apriSito() }
-            // un altro Genio: si entra da capo, senza i cookie di quello di prima
+            // un altro Genio: si entra da capo, senza i cookie di quello di prima e senza la chiave del dispositivo
             if cambia {
                 WKWebsiteDataStore.default().removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast, completionHandler: apri)
             } else { apri() }
@@ -172,6 +197,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
     func webView(_ w: WKWebView, didFail n: WKNavigation!, withError e: Error) { mostraErrore(e) }
     func webView(_ w: WKWebView, didFinish n: WKNavigation!) {
         errore.isHidden = true
+        offriRestaCollegato(w.url)
         // colore della colonna scelto in Aspetto (--night), per la striscia in alto
         w.evaluateJavaScript("getComputedStyle(document.documentElement).getPropertyValue('--night')") { [weak self] v, _ in
             guard let self = self, let c = (v as? String).flatMap(Self.coloreHex) else { return }
@@ -322,6 +348,176 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
         }
     }
 
+    // ---------- resta collegato con Face ID (Sblocco.swift) ----------
+    private func preparaBlocco() {
+        blocco.isHidden = true
+        blocco.translatesAutoresizingMaskIntoConstraints = false
+        blocco.sblocca = { [weak self] in self?.sbloccaDaTasto() }
+        blocco.esci = { [weak self] in self?.esciDalBlocco() }
+        view.addSubview(blocco)
+        NSLayoutConstraint.activate([
+            blocco.topAnchor.constraint(equalTo: view.topAnchor), blocco.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            blocco.leadingAnchor.constraint(equalTo: view.leadingAnchor), blocco.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+        ])
+    }
+
+    // fondo del blocco: il colore della colonna, se è scuro (il testo è bianco); altrimenti il blu notte di serie
+    private var coloreBlocco: UIColor {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        guard let c = barra.backgroundColor, c.getRed(&r, green: &g, blue: &b, alpha: &a) else { return notte }
+        let lin = { (x: CGFloat) -> CGFloat in x <= 0.03928 ? x / 12.92 : pow((x + 0.055) / 1.055, 2.4) }
+        let l = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+        return l <= 0.18 ? c : notte // bianco su questo fondo almeno 4,5:1
+    }
+
+    private func mostraBlocco(occupato: Bool, messaggio: String? = nil) {
+        let chi = base.flatMap { prefs.string(forKey: "nome:" + $0) } ?? ""
+        blocco.mostra(come: Sblocco.nome() ?? "il codice", nome: chi, colore: coloreBlocco, occupato: occupato, messaggio: messaggio)
+        blocco.isHidden = false
+        view.bringSubviewToFront(blocco)
+    }
+
+    // app in secondo piano: la pagina si copre subito (anche nell'elenco delle app aperte) se si resta collegati
+    private func fuori() {
+        fuoriDa = Date()
+        if haChiave && !sbloccoInCorso { mostraBlocco(occupato: false) }
+    }
+
+    private func dentro() {
+        let lontano = fuoriDa.map { Date().timeIntervalSince($0) >= WebViewController.SBLOCCO_DOPO } ?? false
+        fuoriDa = nil
+        guard haChiave, !sbloccoInCorso else { return }
+        if lontano || web.url == nil { sblocca { [weak self] in self?.dopoSblocco() } } else { blocco.isHidden = true }
+    }
+
+    /// pagina già aperta: riprende da dove era (Genio toglie il suo blocco per inattività); app appena aperta: si carica
+    private func dopoSblocco() {
+        if web.url == nil { apriSito(); return }
+        web.evaluateJavaScript("window.dispatchEvent(new Event('genio-sbloccato'))")
+    }
+
+    private func sbloccaDaTasto() { sblocca { [weak self] in self?.dopoSblocco() } }
+
+    /// Face ID → chiave → sessione nuova nella vista web. fatto parte solo se tutto va bene;
+    /// chiave non più valida (30 giorni, Esci, admin): si dimentica e si va all'accesso
+    private func sblocca(_ fatto: @escaping () -> Void) {
+        guard let b = base, !sbloccoInCorso else { return }
+        sbloccoInCorso = true
+        mostraBlocco(occupato: true)
+        Sblocco.leggi(b) { [weak self] esito in
+            guard let self = self else { return }
+            switch esito {
+            case .annullato:
+                self.sbloccoInCorso = false
+                self.mostraBlocco(occupato: false)
+            case .nulla:
+                self.sbloccoInCorso = false
+                self.chiaveNulla()
+            case .chiave(let k):
+                Sblocco.invia(b, ["azione": "sblocca", "chiave": k], ua: self.uaApp, cookie: nil) { [weak self] st, _, resp in
+                    guard let self = self else { return }
+                    if st == 200, let r = resp {
+                        Sblocco.metti(r, base: b) { [weak self] in
+                            guard let self = self else { return }
+                            self.sbloccoInCorso = false
+                            self.blocco.isHidden = true
+                            fatto()
+                        }
+                    } else if st == 401 {
+                        self.sbloccoInCorso = false
+                        self.chiaveNulla()
+                    } else {
+                        self.sbloccoInCorso = false
+                        self.mostraBlocco(occupato: false, messaggio: "Genio non risponde. Controlla la connessione e riprova.")
+                    }
+                }
+            }
+        }
+    }
+
+    private func chiaveNulla() {
+        if let b = base { Sblocco.dimentica(b) }
+        aggiornaPonte()
+        blocco.isHidden = true
+        apriSito("/login")
+    }
+
+    private func esciDalBlocco() {
+        if let b = base { Sblocco.dimentica(b, avvisa: true, ua: uaApp) }
+        noChiave = false
+        aggiornaPonte()
+        blocco.isHidden = true
+        apriSito("/login")
+    }
+
+    // Dopo l'accesso, una volta: "Vuoi restare collegato?". Solo se il telefono ha un codice e Genio lo permette
+    // (non sul browser, non in "Accedi come", non se il super amministratore l'ha spento).
+    private func offriRestaCollegato(_ url: URL?) {
+        guard let b = base, let u = url, Indirizzo.stesso(u, b) else { return }
+        if u.path == "/login" { noChiave = false; chiesto = false; return } // nuovo accesso: si può chiedere di nuovo
+        guard !haChiave, !noChiave, !chiesto, presentedViewController == nil, let come = Sblocco.nome() else { return }
+        chiesto = true
+        Sblocco.cookie(b) { [weak self] c in
+            guard let self = self, let c = c else { return }
+            Sblocco.invia(b, nil, ua: self.uaApp, cookie: c) { [weak self] st, j, _ in
+                guard let self = self, st == 200, (j["ammessa"] as? Bool) == true, self.base == b, self.presentedViewController == nil else { return }
+                let giorni = (j["giorni"] as? Int) ?? 30
+                let nome = (j["nome"] as? String) ?? ""
+                let o = OffertaViewController(come: come, giorni: giorni, colore: self.coloreBlocco, mfa: (j["mfa"] as? Bool) == true)
+                o.modalPresentationStyle = .pageSheet
+                o.nonOra = { [weak self] in self?.noChiave = true }
+                o.usa = { [weak self] in self?.creaChiave(b, cookie: c, come: come, nome: nome) }
+                self.present(o, animated: true)
+            }
+        }
+    }
+
+    private func creaChiave(_ b: String, cookie: String, come: String, nome: String) {
+        Sblocco.invia(b, ["azione": "crea", "dispositivo": UIDevice.current.model, "sblocco": come], ua: uaApp, cookie: cookie) { [weak self] st, j, _ in
+            guard let self = self else { return }
+            guard st == 200, let k = j["chiave"] as? String, Sblocco.salva(k, base: b) else {
+                let a = UIAlertController(title: "Non è stato possibile", message: "Genio resta come nel browser: riprova dopo il prossimo accesso.", preferredStyle: .alert)
+                a.addAction(UIAlertAction(title: "OK", style: .default))
+                self.presentaOppure(a) {}
+                return
+            }
+            self.prefs.set(String(nome.prefix(30)), forKey: "nome:" + b) // per "Ciao <nome>" nel blocco
+            self.aggiornaPonte()
+        }
+    }
+
+    // window.GenioApp per le pagine: sblocco() dice come si sblocca ('' senza chiave), sblocca() ed esci() chiamano l'app
+    private func aggiornaPonte() {
+        guard let web = web else { return }
+        let come = haChiave ? (Sblocco.nome() ?? "") : ""
+        let js = "(function(){var c=\(Self.jsTesto(come));window.GenioApp=Object.freeze({sblocco:function(){return c},sblocca:function(){webkit.messageHandlers.genio.postMessage('sblocca')},esci:function(){webkit.messageHandlers.genio.postMessage('esci')}});})();"
+        let uc = web.configuration.userContentController
+        uc.removeAllUserScripts()
+        uc.addUserScript(WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        web.evaluateJavaScript(js + "window.dispatchEvent(new Event('genio-app'))")
+    }
+
+    static func jsTesto(_ t: String) -> String {
+        let d = (try? JSONSerialization.data(withJSONObject: [t])) ?? Data("[\"\"]".utf8)
+        let a = String(data: d, encoding: .utf8) ?? "[\"\"]"
+        return String(a.dropFirst().dropLast())
+    }
+
+    func userContentController(_ uc: WKUserContentController, didReceive m: WKScriptMessage) {
+        guard m.frameInfo.isMainFrame, let b = base else { return }
+        let o = m.frameInfo.securityOrigin
+        let origine = "\(o.protocol)://\(o.host)" + (o.port > 0 ? ":\(o.port)" : "")
+        guard origine == b else { return } // solo il Genio collegato
+        switch m.body as? String {
+        case "sblocca": if haChiave { sbloccaDaTasto() }
+        case "esci":
+            Sblocco.dimentica(b, avvisa: true, ua: uaApp)
+            noChiave = false
+            aggiornaPonte()
+        default: break
+        }
+    }
+
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor { view.window ?? ASPresentationAnchor() }
 
     static func casuale() -> String {
@@ -335,4 +531,11 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
     static func base64url(_ d: Data) -> String {
         d.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
     }
+}
+
+// il gestore dei messaggi tiene un riferimento forte: così la vista dell'app non resta in memoria per sempre
+final class Debole: NSObject, WKScriptMessageHandler {
+    weak var dentro: WKScriptMessageHandler?
+    init(_ d: WKScriptMessageHandler) { dentro = d }
+    func userContentController(_ uc: WKUserContentController, didReceive m: WKScriptMessage) { dentro?.userContentController(uc, didReceive: m) }
 }

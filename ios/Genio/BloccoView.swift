@@ -125,7 +125,7 @@ final class BloccoView: UIView {
             anello.widthAnchor.constraint(equalToConstant: 96), anello.heightAnchor.constraint(equalToConstant: 96),
             icona.centerXAnchor.constraint(equalTo: anello.centerXAnchor), icona.centerYAnchor.constraint(equalTo: anello.centerYAnchor),
             mezzo.centerXAnchor.constraint(equalTo: centerXAnchor),
-            mezzo.centerYAnchor.constraint(equalTo: g.centerYAnchor, constant: 40).withPriority(.defaultHigh),
+            mezzo.centerYAnchor.constraint(equalTo: g.centerYAnchor, constant: 40).conPriorita(.defaultHigh),
             mezzo.topAnchor.constraint(greaterThanOrEqualTo: alto.bottomAnchor, constant: 24),
             mezzo.widthAnchor.constraint(equalTo: giu.widthAnchor),
             giu.topAnchor.constraint(greaterThanOrEqualTo: mezzo.bottomAnchor, constant: 24),
@@ -133,7 +133,7 @@ final class BloccoView: UIView {
             giu.centerXAnchor.constraint(equalTo: centerXAnchor),
             giu.leadingAnchor.constraint(greaterThanOrEqualTo: g.leadingAnchor, constant: 24),
             giu.widthAnchor.constraint(lessThanOrEqualToConstant: 400),
-            giu.widthAnchor.constraint(equalTo: g.widthAnchor, constant: -48).withPriority(.defaultHigh),
+            giu.widthAnchor.constraint(equalTo: g.widthAnchor, constant: -48).conPriorita(.defaultHigh),
             tasto.heightAnchor.constraint(greaterThanOrEqualToConstant: 54),
             esciTasto.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
             riga.topAnchor.constraint(equalTo: avviso.topAnchor, constant: 12), riga.bottomAnchor.constraint(equalTo: avviso.bottomAnchor, constant: -12),
@@ -213,4 +213,9 @@ final class BloccoView: UIView {
         avviso.isHidden = messaggio == nil
         if let m = messaggio { UIAccessibility.post(notification: .announcement, argument: m) }
     }
+}
+
+extension NSLayoutConstraint {
+    /// vincolo con priorità, da usare in un elenco di activate
+    func conPriorita(_ p: UILayoutPriority) -> NSLayoutConstraint { priority = p; return self }
 }

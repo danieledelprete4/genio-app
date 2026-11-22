@@ -98,7 +98,7 @@ final class OffertaViewController: UIViewController, UIAdaptivePresentationContr
             pila.topAnchor.constraint(equalTo: scorri.contentLayoutGuide.topAnchor, constant: 32),
             pila.bottomAnchor.constraint(equalTo: scorri.contentLayoutGuide.bottomAnchor, constant: -8),
             pila.centerXAnchor.constraint(equalTo: scorri.centerXAnchor),
-            pila.widthAnchor.constraint(equalTo: scorri.frameLayoutGuide.widthAnchor, constant: -44).withPriority(.defaultHigh),
+            pila.widthAnchor.constraint(equalTo: scorri.frameLayoutGuide.widthAnchor, constant: -44).conPriorita(.defaultHigh),
             pila.widthAnchor.constraint(lessThanOrEqualToConstant: 440),
             ico.widthAnchor.constraint(equalToConstant: 64), ico.heightAnchor.constraint(equalToConstant: 64),
             img.centerXAnchor.constraint(equalTo: ico.centerXAnchor), img.centerYAnchor.constraint(equalTo: ico.centerYAnchor),

@@ -83,7 +83,10 @@ final class AddressViewController: UIViewController, UITextFieldDelegate {
         pila.spacing = 16
         pila.setCustomSpacing(24, after: sotto)
         pila.translatesAutoresizingMaskIntoConstraints = false
+        // l'icona al centro: la pila interna deve essere VERTICALE, altrimenti l'icona (larga 72) riempie la riga
+        // e stringe tutta la schermata a 72 punti (testo in colonna, campo minuscolo: build 22)
         let centro = UIStackView(arrangedSubviews: [icona])
+        centro.axis = .vertical
         centro.alignment = .center
         pila.removeArrangedSubview(icona)
         pila.insertArrangedSubview(centro, at: 0)

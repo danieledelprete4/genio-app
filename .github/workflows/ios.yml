@@ -108,12 +108,12 @@ jobs:
           fastlane pilot upload --ipa "$(ls $RUNNER_TEMP/out/*.ipa | head -1)" --api_key_path "$RUNNER_TEMP/asc/key.json" \
             --uses_non_exempt_encryption false --changelog "$NOTE"
           # 2) gruppo interno (il titolare e il suo team): Apple lo riempie da solo solo con le build caricate da Xcode
-          fastlane pilot distribute --api_key_path "$RUNNER_TEMP/asc/key.json" --app_identifier "$IOS_BUNDLE_ID" \
+          fastlane pilot distribute --api_key_path "$RUNNER_TEMP/asc/key.json" --app_identifier "$IOS_BUNDLE_ID" --app_platform ios \
             --build_number "$BUILD" --groups "$INTERNO" \
             || echo "::warning::Build $BUILD non aggiunta al gruppo interno '$INTERNO': aggiungila da App Store Connect > TestFlight"
           # 3) invio al gruppo esterno. Apple lo fa creare solo dopo la prima build: se manca, la build resta caricata
           #    e si avvisa, invece di dare errore
-          fastlane pilot distribute --api_key_path "$RUNNER_TEMP/asc/key.json" --app_identifier "$IOS_BUNDLE_ID" \
+          fastlane pilot distribute --api_key_path "$RUNNER_TEMP/asc/key.json" --app_identifier "$IOS_BUNDLE_ID" --app_platform ios \
             --build_number "$BUILD" --distribute_external true --groups "$GRUPPO" --notify_external_testers true \
             --changelog "$NOTE" \
             || echo "::warning::Build $BUILD caricata, ma non inviata al gruppo esterno '$GRUPPO': crealo in App Store Connect > TestFlight (Test esterni) e aggiungi la build"

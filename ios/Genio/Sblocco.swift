@@ -47,6 +47,7 @@ enum Sblocco {
         let q: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: servizio, kSecAttrAccount as String: base]
         SecItemDelete(q as CFDictionary)
         prefs.removeObject(forKey: "impronta:" + base)
+        prefs.removeObject(forKey: "nome:" + base)
     }
 
     enum Lettura { case chiave(String), annullato, nulla }

@@ -371,7 +371,8 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
     }
 
     private func mostraBlocco(occupato: Bool, messaggio: String? = nil) {
-        blocco.mostra(come: Sblocco.nome() ?? "il codice", colore: coloreBlocco, occupato: occupato, messaggio: messaggio)
+        let chi = base.flatMap { prefs.string(forKey: "nome:" + $0) } ?? ""
+        blocco.mostra(come: Sblocco.nome() ?? "il codice", nome: chi, colore: coloreBlocco, occupato: occupato, messaggio: messaggio)
         blocco.isHidden = false
         view.bringSubviewToFront(blocco)
     }
@@ -461,17 +462,17 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
             Sblocco.invia(b, nil, ua: self.uaApp, cookie: c) { [weak self] st, j, _ in
                 guard let self = self, st == 200, (j["ammessa"] as? Bool) == true, self.base == b, self.presentedViewController == nil else { return }
                 let giorni = (j["giorni"] as? Int) ?? 30
-                let a = UIAlertController(title: "Vuoi restare collegato?",
-                                          message: "Genio si aprirà con \(come), senza rifare l'accesso. Anche quando si blocca per inattività basta \(come) per riprendere. Ogni \(giorni) giorni si rifà l'accesso completo.",
-                                          preferredStyle: .alert)
-                a.addAction(UIAlertAction(title: "Non ora", style: .cancel) { [weak self] _ in self?.noChiave = true })
-                a.addAction(UIAlertAction(title: "Usa \(come)", style: .default) { [weak self] _ in self?.creaChiave(b, cookie: c, come: come) })
-                self.present(a, animated: true)
+                let nome = (j["nome"] as? String) ?? ""
+                let o = OffertaViewController(come: come, giorni: giorni, colore: self.coloreBlocco, mfa: (j["mfa"] as? Bool) == true)
+                o.modalPresentationStyle = .pageSheet
+                o.nonOra = { [weak self] in self?.noChiave = true }
+                o.usa = { [weak self] in self?.creaChiave(b, cookie: c, come: come, nome: nome) }
+                self.present(o, animated: true)
             }
         }
     }
 
-    private func creaChiave(_ b: String, cookie: String, come: String) {
+    private func creaChiave(_ b: String, cookie: String, come: String, nome: String) {
         Sblocco.invia(b, ["azione": "crea", "dispositivo": UIDevice.current.model, "sblocco": come], ua: uaApp, cookie: cookie) { [weak self] st, j, _ in
             guard let self = self else { return }
             guard st == 200, let k = j["chiave"] as? String, Sblocco.salva(k, base: b) else {
@@ -480,6 +481,7 @@ final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDeleg
                 self.presentaOppure(a) {}
                 return
             }
+            self.prefs.set(String(nome.prefix(30)), forKey: "nome:" + b) // per "Ciao <nome>" nel blocco
             self.aggiornaPonte()
         }
     }

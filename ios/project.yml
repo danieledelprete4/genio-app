@@ -1,0 +1,63 @@
+# Progetto Xcode dell'app Genio per iPhone e iPad, creato da XcodeGen (brew install xcodegen; xcodegen)
+# sul Mac di GitHub Actions (.github/workflows/ios.yml). Il .xcodeproj non sta nel repository.
+# ID pacchetto e team arrivano dalle variabili del workflow (IOS_BUNDLE_ID, APPLE_TEAM_ID).
+name: Genio
+options:
+  bundleIdPrefix: app.genio
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+targets:
+  Genio:
+    type: application
+    platform: iOS
+    sources: [Genio]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ${IOS_BUNDLE_ID}
+        DEVELOPMENT_TEAM: ${APPLE_TEAM_ID}
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: NO
+    info:
+      path: Genio/Info.plist
+      properties:
+        CFBundleDisplayName: Genio
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen: {}
+        UIRequiresFullScreen: true
+        UIStatusBarStyle: UIStatusBarStyleDarkContent
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        NSCameraUsageDescription: Genio usa la fotocamera per leggere la tessera sanitaria, i codici a barre e le ricevute.
+        NSPhotoLibraryUsageDescription: Genio apre le foto che scegli tu, per allegarle a un preventivo o a una spesa.
+        NSLocationWhenInUseUsageDescription: Genio usa la posizione solo quando timbri l'entrata o l'uscita in negozio.
+        NSMicrophoneUsageDescription: Genio usa il microfono solo se fai una domanda a voce.
+  GenioTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [GenioTests]
+    dependencies:
+      - target: Genio
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: ${IOS_BUNDLE_ID}.tests
+        DEVELOPMENT_TEAM: ${APPLE_TEAM_ID}
+schemes:
+  Genio:
+    build:
+      targets:
+        Genio: all
+        GenioTests: [test]
+    test:
+      targets: [GenioTests]

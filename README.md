@@ -1,4 +1,4 @@
-# Genio per Windows, Mac e tablet Android
+# Genio per Windows, Mac, tablet Android, iPhone e iPad
 
 L'app apre il sito Genio dell'azienda in una finestra propria, con l'icona sul desktop, come un programma installato.
 Qui ci sono solo l'app per computer e i file da scaricare: il codice di Genio non è in questo repository.
@@ -62,3 +62,20 @@ l'automazione in `.github/workflows/app.yml` crea i file su Windows e Mac e li p
 ---
 
 Software proprietario, tutti i diritti riservati. Vedi la licenza di Genio.
+
+## iPhone e iPad (TestFlight)
+
+La cartella `ios/` contiene l'app per iPhone e iPad: come quella Android, apre il Genio dell'azienda a tutto schermo.
+Il sito la riconosce dalla firma `GenioiOS` e disegna barre e menu di vetro (scelta in Utenti e accessi > Aspetto);
+sull'iPad c'è anche `GenioTablet`, quindi il modo tablet dei negozi.
+
+Si distribuisce con TestFlight sull'account sviluppatore del titolare, con il link pubblico che compare
+solo nel suo Genio (sezione Mobile). Il workflow `ios.yml` la compila su un Mac di GitHub e la manda a TestFlight
+quando cambia l'app, con "Run workflow" e il giorno 1 di ogni mese (le build di TestFlight scadono dopo 90 giorni).
+
+Serve una volta sola, nei segreti del repository: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8` (chiave API di
+App Store Connect, ruolo Amministratore) e `APPLE_TEAM_ID`. ID pacchetto e gruppo di TestFlight si cambiano con
+le variabili `IOS_BUNDLE_ID` (di serie `app.genio.ios`) e `IOS_TESTFLIGHT_GROUP` (di serie `Genio`).
+
+Al primo avvio si scrive l'indirizzo di Genio; per cambiarlo si scuote il telefono, oppure si usa la pagina che compare
+quando Genio non risponde. L'accesso Microsoft o Google si fa in una finestra di Safari e torna da solo nell'app.

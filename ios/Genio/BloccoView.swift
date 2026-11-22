@@ -214,7 +214,3 @@ final class BloccoView: UIView {
         if let m = messaggio { UIAccessibility.post(notification: .announcement, argument: m) }
     }
 }
-
-extension NSLayoutConstraint {
-    func withPriority(_ p: UILayoutPriority) -> NSLayoutConstraint { priority = p; return self }
-}

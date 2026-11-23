@@ -1,7 +1,7 @@
 {
   "name": "genio-desktop",
   "productName": "Genio",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Genio per Windows e Mac",
   "author": "Genio",
   "license": "UNLICENSED",
@@ -10,7 +10,8 @@
   "scripts": {
     "start": "electron .",
     "win": "electron-builder --win nsis --x64",
-    "mac": "electron-builder --mac dir --x64 --arm64"
+    "mac": "electron-builder --mac dir --x64 --arm64",
+    "test": "node --test test/indirizzo.test.js"
   },
   "devDependencies": {
     "electron": "44.7.0",
@@ -23,6 +24,7 @@
     "artifactName": "Genio-${os}-${arch}.${ext}",
     "files": [
       "main.js",
+      "indirizzo.js",
       "preload.js",
       "pagine/**",
       "build/icon.png"

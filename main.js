@@ -28,21 +28,16 @@ function writeConfig(patch) {
   try { fs.mkdirSync(path.dirname(configFile()), { recursive: true }); fs.writeFileSync(configFile(), JSON.stringify(next, null, 2)); } catch {}
   return next;
 }
-// Accetta "genio.vercel.app", "https://genio.vercel.app/login"... e tiene solo https://host (http solo in locale).
-function normalizeUrl(input) {
-  let s = String(input || '').trim();
-  if (!s) return null;
-  if (!/^[a-z]+:\/\//i.test(s)) s = `https://${s}`;
-  try {
-    const u = new URL(s);
-    const local = ['localhost', '127.0.0.1'].includes(u.hostname);
-    if (u.protocol !== 'https:' && !(local && u.protocol === 'http:')) return null;
-    if (!u.hostname.includes('.') && !local) return null;
-    return u.origin;
-  } catch { return null; }
-}
+const { normalizeUrl, gemello } = require('./indirizzo');
 const baseUrl = () => normalizeUrl(readConfig().url);
 const sameSite = (url) => { try { return new URL(url).origin === baseUrl(); } catch { return false; } };
+// il sito rimanda alla versione con (o senza) "www." (es. genio.nexus -> www.genio.nexus): è lo stesso Genio,
+// si salva l'indirizzo nuovo e si resta nell'app (prima il www sembrava un altro sito e l'accesso restava nel browser)
+function seguiGemello(url) {
+  if (!gemello(url, baseUrl())) return false;
+  writeConfig({ url: normalizeUrl(url) });
+  return true;
+}
 const isLocalPage = (url) => String(url).startsWith('file:');
 // pagine di accesso di Google e Microsoft: restano nella finestra solo sui siti senza ritorno all'app
 const LOGIN_HOSTS = {
@@ -84,6 +79,7 @@ function createWindow() {
   const wc = win.webContents;
   // link e navigazioni: il sito resta nella finestra, il resto si apre nel browser
   wc.on('will-navigate', (e, url) => {
+    seguiGemello(url);
     if (isLocalPage(url) || (inAppLogin && loginHost(inAppLogin, url))) return;
     if (sameSite(url)) {
       const prov = LOGIN_PATHS[new URL(url).pathname];
@@ -93,7 +89,10 @@ function createWindow() {
     e.preventDefault();
     if (/^https?:|^mailto:|^tel:/i.test(url)) shell.openExternal(url);
   });
+  // rimando del sito appena aperto (genio.nexus -> www.genio.nexus): l'indirizzo giusto si salva subito
+  wc.on('did-navigate', (_e, url) => { seguiGemello(url); });
   wc.setWindowOpenHandler(({ url }) => {
+    seguiGemello(url);
     if (sameSite(url) || url.startsWith('blob:') || url === 'about:blank') {
       return { action: 'allow', overrideBrowserWindowOptions: { autoHideMenuBar: true, icon: path.join(__dirname, 'build', 'icon.png'), webPreferences: { contextIsolation: true, sandbox: true } } };
     }
@@ -166,12 +165,14 @@ ipcMain.handle('genio:get', () => ({ url: baseUrl() || '', version: app.getVersi
 ipcMain.handle('genio:save', async (_e, input) => {
   const base = normalizeUrl(input);
   if (!base) return { error: 'Scrivi un indirizzo valido, ad esempio https://nome.vercel.app' };
+  let dest = base; // dopo un rimando (es. genio.nexus -> www.genio.nexus) si salva l'indirizzo finale, se è lo stesso Genio
   try {
-    await net.fetch(`${base}/login`, { method: 'GET', cache: 'no-store' });
+    const r = await net.fetch(`${base}/login`, { method: 'GET', cache: 'no-store' });
+    if (r.url && gemello(r.url, base)) dest = normalizeUrl(r.url);
   } catch {
     return { error: 'Indirizzo non raggiungibile: controlla che sia scritto bene e che ci sia la connessione.' };
   }
-  writeConfig({ url: base });
+  writeConfig({ url: dest });
   inAppLogin = null;
   openSite();
   return { ok: true };

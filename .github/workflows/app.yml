@@ -27,6 +27,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci --no-audit --no-fund
+      - run: npm test
       # fino a 3 tentativi: i download di Electron ogni tanto rispondono 504
       - name: Crea l'installer
         shell: bash
@@ -49,6 +50,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci --no-audit --no-fund
+      - run: npm test
       # fino a 3 tentativi: i download di Electron ogni tanto rispondono 504
       - name: Crea le app
         run: for i in 1 2 3; do npx electron-builder --mac dir --x64 --arm64 --publish never && exit 0; sleep 20; done; exit 1
